@@ -1,0 +1,73 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Admin = wahi ek account jiska uid settings/admin me likha hai (pehli baar site se banta hai).
+    function isAdmin() {
+      return request.auth != null
+          && exists(/databases/$(database)/documents/settings/admin)
+          && get(/databases/$(database)/documents/settings/admin).data.uid == request.auth.uid;
+    }
+    function signedIn() { return request.auth != null; }
+
+    // NIYAM: Products ko sirf admin delete kar sakta hai. Baaki sab collections me DELETE band hai.
+
+    // Products: sab dekh sakte hain; sirf admin banata/badalta hai.
+    // Order ke time customer sirf "stock" ghata sakta hai (badha nahi sakta).
+    match /products/{id} {
+      allow read: if true;
+      allow create, update: if isAdmin();
+      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stock'])
+                    && request.resource.data.stock is number
+                    && request.resource.data.stock >= 0
+                    && request.resource.data.stock <= resource.data.stock;
+      allow delete: if isAdmin();
+    }
+
+    // Site settings, about, filters: sab dekh sakte hain, sirf admin badalta hai.
+    match /settings/{doc} {
+      allow read: if true;
+      allow create, update: if isAdmin() && doc != 'admin';
+      allow delete: if false;
+    }
+    // Admin record: sirf ek baar ban sakta hai, phir kabhi badal ya delete nahi hota.
+    match /settings/admin {
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    match /banners/{doc} {
+      allow read: if true;
+      allow create, update: if isAdmin();
+      allow delete: if false;
+    }
+
+    // Coupons: code pata ho to check kar sakte hain, list sirf admin dekhta hai.
+    match /coupons/{code} {
+      allow get: if true;
+      allow list: if isAdmin();
+      allow create, update: if isAdmin();
+      allow delete: if false;
+    }
+
+    // Customers: admin sab dekhta hai, customer sirf apna profile.
+    match /customers/{uid} {
+      allow read: if isAdmin() || (signedIn() && request.auth.uid == uid);
+      allow create, update: if signedIn() && request.auth.uid == uid;
+      allow delete: if false;
+    }
+
+    // Orders + Bills: payment ke baad banta hai. Admin sirf status badal sakta hai. Delete kisi ko nahi.
+    match /orders/{id} {
+      allow create: if request.resource.data.paymentStatus == 'paid'
+                    && request.resource.data.total is number
+                    && request.resource.data.items is list
+                    && (request.resource.data.uid == 'guest'
+                        || (signedIn() && request.resource.data.uid == request.auth.uid));
+      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow update: if isAdmin()
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'paymentStatus']);
+      allow delete: if false;
+    }
+  }
+}
