@@ -3,9 +3,10 @@ import {
   onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, updateProfile
 } from "./firebase.js";
 import { adminLogin, adminSetup } from "./adminauth.js";
+import { RAZORPAY_API, RAZORPAY_KEY_ID } from "./config.js";
 import {
   S, CATS, catBySlug, catByKey, notify, site, about, banner, filterValues, esc, money, priceOf, inStock,
-  productImage, toast, friendlyError, saveCart, saveWish, BLURBS } from "./core.js";
+  productImage, toast, friendlyError, saveCart, saveWish, BLURBS, DEFAULT_POLICY } from "./core.js";
 
 const $ = (s) => document.querySelector(s);
 const view = $("#view");
@@ -66,6 +67,7 @@ function parseRoute() {
   if (a === "p") return { name: "product", id: b };
   if (["cart", "wishlist", "checkout", "about", "account"].includes(a)) return { name: a };
   if (a === "thanks") return { name: "thanks", no: b };
+  if (a === "policies-terms" || a === "privacy-policy") return { name: "policy" };
   if (a === "admin") return { name: "admin" };
   return { name: "404" };
 }
@@ -131,6 +133,7 @@ function drawFooter() {
         <div class="links">${CATS.map((c) => `<a href="#/c/${c.slug}">${c.nav}</a>`).join("")}<a href="#/about">About Us</a></div></div>
       <div><p class="label">Details</p><ul>${det}</ul></div>
     </div>
+    <p class="copy"><a href="#/policies-terms" class="policy-link">Policies &amp; Terms</a></p>
     <p class="copy">${esc(s.footerNote || "© 2026 INKFLO by Ajaariyah. Flow with style.")}</p>`;
 }
 
@@ -180,7 +183,7 @@ function paintGate() {
 /* ---------------- views ---------------- */
 function renderView() {
   dirty = false;
-  const fn = { home: vHome, category: vCategory, product: vProduct, cart: vCart, wishlist: vWishlist, checkout: vCheckout, about: vAbout, account: vAccount, thanks: vThanks }[route.name] || v404;
+  const fn = { home: vHome, category: vCategory, product: vProduct, cart: vCart, wishlist: vWishlist, checkout: vCheckout, about: vAbout, account: vAccount, thanks: vThanks, policy: vPolicy }[route.name] || v404;
   const warn = S.dataError === "rules"
     ? `<div class="wrap"><div class="alert">Live data is blocked by Firebase rules. Publish <b>firestore.rules</b> in Firebase Console (see SETUP.md).</div></div>`
     : S.dataError === "net" ? `<div class="wrap"><div class="alert">Could not reach Firebase. Check your internet connection.</div></div>` : "";
@@ -309,8 +312,8 @@ const summary = (t) => `
   <div class="sum total"><span>Total</span><span>${money(t.total)}</span></div>`;
 const couponBox = () => `
   <div style="margin:14px 0"><b style="font-size:13px">Coupon</b>
-  ${S.coupon ? `<div class="row" style="margin-top:6px"><span class="st">${esc(S.coupon.code)}</span><button class="btn sm" data-act="rmcoupon">Remove</button></div>`
-    : `<div class="inl" style="margin-top:6px"><input id="coupon" placeholder="Enter code" style="text-transform:uppercase"><button class="btn sm" data-act="applycoupon">Apply</button></div>`}
+  ${S.coupon ? `<div class="row" style="margin-top:6px"><span class="st">${esc(S.coupon.code)}</span><button type="button" class="btn sm" data-act="rmcoupon">Remove</button></div>`
+    : `<div class="inl" style="margin-top:6px"><input id="coupon" placeholder="Enter code" style="text-transform:uppercase"><button type="button" class="btn sm" data-act="applycoupon">Apply</button></div>`}
   ${S.couponErr ? `<p class="err">${esc(S.couponErr)}</p>` : ""}</div>`;
 
 function vCart() {
@@ -320,7 +323,7 @@ function vCart() {
   return `<div class="wrap" style="margin-top:30px"><h1>Your cart</h1>
     <div class="two"><div class="card">${items.map((i) => {
       const idx = S.cart.findIndex((c) => lineKey(c) === lineKey(i));
-      return `<div class="line"><img src="${esc(productImage(i.p))}" alt="">
+      return `<div class="line">${productImage(i.p) ? `<img src="${esc(productImage(i.p))}" alt="">` : `<div class="noimg">Add your product</div>`}
         <div><h4><a href="#/p/${esc(i.p.id)}">${esc(i.p.name)}</a></h4><small>${[i.color, i.size].filter(Boolean).join(" · ")}</small><br>
           <div class="qty" style="margin-top:6px"><button data-act="cqty" data-i="${idx}" data-d="-1">−</button><span>${i.qty}</span><button data-act="cqty" data-i="${idx}" data-d="1">+</button></div></div>
         <div style="text-align:right"><b>${money(priceOf(i.p) * i.qty)}</b><br><button class="link" style="border:0;background:none;margin-top:8px" data-act="crem" data-i="${idx}">Remove</button></div></div>`;
@@ -393,6 +396,12 @@ function vAbout() {
     <section class="section">${pillars()}</section>
     <section class="section"><h2 style="font-size:1.9rem;margin-bottom:16px">What we make</h2>
       <div class="grid">${CATS.map((c) => `<a class="pcard" href="#/c/${c.slug}"><div class="pimg"><img src="img/card-${c.key}.jpg" alt="" loading="lazy"></div><div class="pbody"><h3>${c.nav}</h3></div></a>`).join("")}</div></section></div>`;
+}
+function vPolicy() {
+  const txt = (site().policyText || DEFAULT_POLICY || "").trim();
+  return `<div class="wrap policy" style="margin-top:30px;max-width:820px"><p class="label">INKFLO</p><h1>Policies &amp; Terms</h1>
+    <div class="policy-body" style="margin-top:18px;white-space:pre-wrap;line-height:1.7">${txt ? esc(txt) : `<span class="muted">Our Policies &amp; Terms will be published here soon.</span>`}</div>
+    <p><a class="btn primary" href="#/" style="margin-top:24px">Back to shop</a></p></div>`;
 }
 const v404 = () => `<div class="wrap" style="margin-top:40px">${emptyBox("Page not found", "That page does not exist.")}<p><a class="btn primary" href="#/" style="margin-top:16px">Go home</a></p></div>`;
 
@@ -474,8 +483,13 @@ document.addEventListener("click", async (e) => {
     case "rmcoupon": S.coupon = null; S.couponErr = ""; renderView(); break;
   }
 });
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && e.target && e.target.id === "coupon") { e.preventDefault(); applyCoupon(); }
+});
 document.addEventListener("input", (e) => {
   const t = e.target;
+  const pf = t.closest && t.closest('form[data-form="pay"]');
+  if (pf) S.draft = Object.fromEntries(new FormData(pf));
   if (t.dataset && t.dataset.act === "fprice") { S.filt.max = Number(t.value); const cat = catBySlug(route.slug); if (cat) { const box = view.querySelector(".cat-list"); const list = filtered(cat); box.innerHTML = list.length ? `<div class="grid">${list.map(card).join("")}</div>` : emptyBox("No products available yet", "Nothing matches this combination."); const ct = view.querySelector(".count"); if (ct) ct.textContent = `${list.length} ${cat.noun}`; t.closest(".fgroup").querySelector("b").textContent = "Max price: " + money(S.filt.max); } }
 });
 
@@ -571,27 +585,48 @@ async function startPayment(fd) {
   S.payErr = "";
   const items = checkoutItems();
   if (!items.length) return;
-  const key = (site().razorpayKeyId || "").trim();
-  if (!key) { S.payErr = "Online payment is not set up yet. Please try again later."; return renderView(); }
+  const api = (RAZORPAY_API || "").replace(/\/+$/, "");
+  let key = (site().razorpayKeyId || RAZORPAY_KEY_ID || "").trim();
+  if (!api && !key) { S.payErr = "Online payment is not set up yet. Please try again later."; return renderView(); }
   for (const i of items) {
     if (!inStock(i.p) || i.qty > Number(i.p.stock)) { S.payErr = `${i.p.name} is out of stock or has fewer pieces than you chose.`; return renderView(); }
   }
   const t = totals(items);
+  if (t.total < 1) { S.payErr = "The order total must be at least ₹1."; return renderView(); }
   S.paying = true; renderView();
   try {
+    let orderId = "", amount = Math.round(t.total * 100);
+    if (api) {
+      const r = await fetch(api + "/create-order", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items: items.map((i) => ({ pid: i.pid, qty: i.qty })), coupon: S.coupon ? S.coupon.code : "" }) });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok || !d.orderId) throw new Error(d.error || "Could not start the payment. Please try again.");
+      if (Math.abs(d.amount - amount) > 100) throw new Error("Prices changed while you were checking out. Please refresh the page and try again.");
+      orderId = d.orderId; amount = d.amount; key = d.keyId || key;
+    }
     await loadRazorpay();
-    const rzp = new window.Razorpay({
-      key, amount: Math.round(t.total * 100), currency: "INR", name: "INKFLO", description: `${items.length} item(s)`,
+    const opts = {
+      key, amount, currency: "INR", name: "INKFLO", description: `${items.length} item(s)`,
       prefill: { name: fd.name, email: fd.email, contact: fd.phone },
       theme: { color: "#4f7209" },
-      handler: (resp) => finishOrder(fd, items, t, resp.razorpay_payment_id),
+      handler: async (resp) => {
+        if (api) {
+          try {
+            const v = await fetch(api + "/verify", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(resp) }).then((x) => x.json());
+            if (!v.ok) { S.paying = false; S.payErr = `Payment could not be verified (ID ${resp.razorpay_payment_id}). Please contact us with this ID.`; return renderView(); }
+          } catch (e) { S.paying = false; S.payErr = `Payment received (ID ${resp.razorpay_payment_id}) but could not be verified. Please contact us with this ID.`; return renderView(); }
+        }
+        finishOrder(fd, items, t, resp.razorpay_payment_id, resp.razorpay_order_id || "");
+      },
       modal: { ondismiss: () => { S.paying = false; renderView(); } }
-    });
+    };
+    if (orderId) opts.order_id = orderId;
+    const rzp = new window.Razorpay(opts);
     rzp.on("payment.failed", (r) => { S.paying = false; S.payErr = (r.error && r.error.description) || "Payment failed. Please try again."; renderView(); });
     rzp.open();
   } catch (er) { S.paying = false; S.payErr = er.message; renderView(); }
 }
-async function finishOrder(fd, items, t, paymentId) {
+async function finishOrder(fd, items, t, paymentId, razorpayOrderId = "") {
   const orderNo = "INK-" + Date.now().toString(36).toUpperCase() + Math.random().toString(36).slice(2, 4).toUpperCase();
   const order = {
     orderNo, uid: S.user ? S.user.uid : "guest",
@@ -599,7 +634,7 @@ async function finishOrder(fd, items, t, paymentId) {
     address: { line: fd.address, city: fd.city, state: fd.state, pincode: fd.pincode },
     items: items.map((i) => ({ pid: i.pid, name: i.p.name, price: priceOf(i.p), qty: i.qty, color: i.color || "", size: i.size || "", category: i.p.category })),
     subtotal: t.sub, discount: t.disc, coupon: S.coupon ? S.coupon.code : "", shipping: t.ship, total: t.total,
-    paymentStatus: "paid", paymentMethod: "razorpay", razorpayPaymentId: paymentId,
+    paymentStatus: "paid", paymentMethod: "razorpay", razorpayPaymentId: paymentId, razorpayOrderId, verified: !!razorpayOrderId,
     status: "placed", createdAt: serverTimestamp()
   };
   let saved = false;

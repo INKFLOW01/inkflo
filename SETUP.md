@@ -32,9 +32,11 @@ Agar admin username/password bhool gaye: Firebase Console -> Firestore -> `setti
 
 ## Razorpay (sirf online payment, COD nahi)
 
-- Settings me sirf **Key ID** (`rzp_live_...`) daalo. **Key Secret kabhi site me mat daalna.**
-- Razorpay Dashboard me **auto-capture** ON rakho.
-- Bina server ke payment ka signature verify nahi ho sakta, isliye har order ka **Payment ID** Razorpay Dashboard se match kar lena.
+**Bas itna karna hai:** Razorpay Key ID (`rzp_live_...`, test ke liye `rzp_test_...`) daalo — ya to Admin panel -> Settings -> *Razorpay Key ID*, ya `js/config.js` me `RAZORPAY_KEY_ID = "..."`. Razorpay Dashboard me **auto-capture** ON rakho. Key Secret site me kabhi mat daalna.
+
+Payment hone par order + bill + stock apne aap Firebase me save ho jata hai.
+
+*(Optional, baad me)* Extra surakshaa ke liye `razorpay-server/worker.js` ko free Cloudflare Worker par chala sakte ho (Secrets: `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`), phir Worker ka link `js/config.js` ke `RAZORPAY_API` me daalo. Isse payment signature verify hota hai. Na karo to bhi payment chalega.
 
 ## Delete ke niyam
 

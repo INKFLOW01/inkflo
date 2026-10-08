@@ -117,7 +117,7 @@ function overview() {
 function products() {
   return `${head("Products", `<button class="btn primary sm" data-a="newproduct">Add product</button><button class="btn sm" data-a="seed">Load dummy products</button>`)}
   ${table(["", "Name", "Category", "Price", "Stock", ""], (S.allProducts || S.products).map((p) => `<tr${p.archived ? ' style="opacity:.55"' : ""}>
-    <td><img class="th" src="${esc(productImage(p))}" alt=""></td><td><b>${esc(p.name)}</b></td><td>${esc((catByKey(p.category) || {}).nav || p.category)}</td>
+    <td>${productImage(p) ? `<img class="th" src="${esc(productImage(p))}" alt="">` : ""}</td><td><b>${esc(p.name)}</b></td><td>${esc((catByKey(p.category) || {}).nav || p.category)}</td>
     <td>${money(priceOf(p))}${priceOf(p) < Number(p.price) ? ` <s class="muted">${money(p.price)}</s>` : ""}</td>
     <td>${Number(p.stock)}${p.archived ? ` <span class="st bad">Archived</span>` : p.available === false ? ` <span class="st bad">Hidden</span>` : ""}</td>
     <td style="white-space:nowrap"><button class="btn sm" data-a="editproduct" data-id="${esc(p.id)}">Edit</button> ${p.archived ? `<button class="btn sm" data-a="restoreproduct" data-id="${esc(p.id)}">Restore</button> ` : ""}<button class="btn sm danger" data-a="deleteproduct" data-id="${esc(p.id)}">Delete</button></td></tr>`),
@@ -255,6 +255,7 @@ function settings() {
     <div class="cols"><label class="field"><span>Shipping fee (₹)</span><input name="shippingFee" type="number" min="0" value="${Number(s.shippingFee) || 0}"></label>
     <label class="field"><span>Free shipping above (₹, 0 = never)</span><input name="freeShippingAbove" type="number" min="0" value="${Number(s.freeShippingAbove) || 0}"></label></div>
     <label class="field"><span>Razorpay Key ID (starts with rzp_)</span><input name="razorpayKeyId" value="${esc(s.razorpayKeyId)}" placeholder="rzp_live_xxxxxxxx"></label>
+    <label class="field"><span>Policies &amp; Terms text (shown when shoppers tap "Policies &amp; Terms" in the footer)</span><textarea name="policyText" rows="10">${esc(s.policyText)}</textarea></label>
     <p class="note">Only the public Key ID goes here. Never put the Key Secret anywhere on this site.</p>
     <button class="btn primary" type="submit">Save settings</button></form>
   <form data-f="password" class="card"><h3 style="font-size:1.3rem;margin-bottom:12px">Change admin password</h3>
@@ -394,7 +395,7 @@ async function onSubmit(e) {
     } else if (kind === "site") {
       await setDoc(doc(db, "settings", "site"), {
         contactEmail: fd.contactEmail.trim(), phone: fd.phone.trim(), instagram: fd.instagram.trim(), facebook: fd.facebook.trim(),
-        address: fd.address.trim(), footerNote: fd.footerNote.trim(), razorpayKeyId: fd.razorpayKeyId.trim(),
+        address: fd.address.trim(), footerNote: fd.footerNote.trim(), razorpayKeyId: fd.razorpayKeyId.trim(), policyText: fd.policyText || "",
         shippingFee: Number(fd.shippingFee) || 0, freeShippingAbove: Number(fd.freeShippingAbove) || 0
       }, { merge: true });
       toast("Settings saved.");

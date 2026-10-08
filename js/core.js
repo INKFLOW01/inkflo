@@ -46,9 +46,12 @@ export const DEFAULT_ABOUT = {
   aishwaryaPhoto: ""
 };
 
+// Policies & Terms ka text yahan likho (ya Admin -> Settings me). Khali ho to "coming soon" dikhega.
+export const DEFAULT_POLICY = "";
+
 export const DEFAULT_SITE = {
   contactEmail: "", phone: "", instagram: "", facebook: "", address: "", footerNote: "",
-  razorpayKeyId: "", shippingFee: 0, freeShippingAbove: 0
+  razorpayKeyId: "", shippingFee: 0, freeShippingAbove: 0, policyText: ""
 };
 
 export const SEED_PRODUCTS = [

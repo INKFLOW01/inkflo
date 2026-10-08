@@ -284,3 +284,8 @@ td img.th{width:44px;height:44px;border-radius:10px;object-fit:cover}
   .heart svg{width:15px;height:15px}
   .tag{left:6px;top:6px;padding:3px 8px;font-size:10px}
 }
+
+/* cart placeholder + footer policy link */
+.line .noimg{width:76px;height:76px;border-radius:14px;font-size:.7rem;padding:4px}
+.copy .policy-link{color:var(--ink);font-weight:600;text-decoration:underline;text-underline-offset:3px}
+.copy:has(.policy-link){padding-bottom:8px;padding-top:14px}
